@@ -53,10 +53,6 @@ func home_page(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-func contacts_page(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "contacts page!")
-}
-
 func registerUser(u User) error {
 	_, err := db.Exec("INSERT INTO users (name, phone, email) VALUES ($1, $2, $3)", u.Name, u.Phone, u.Email)
 	return err
@@ -85,7 +81,6 @@ func register_page(w http.ResponseWriter, r *http.Request) {
 
 func handleRequest() {
 	http.HandleFunc("/", home_page)
-	http.HandleFunc("/contacts/", contacts_page)
 	http.HandleFunc("/register", register_page) // Убедитесь, что этот маршрут добавлен
 	http.ListenAndServe("0.0.0.0:8080", nil)
 }
