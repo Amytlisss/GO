@@ -81,8 +81,8 @@ func register_page(w http.ResponseWriter, r *http.Request) {
 
 func handleRequest() {
 	http.HandleFunc("/", home_page)
-	http.HandleFunc("/register", register_page) // Убедитесь, что этот маршрут добавлен
-	http.ListenAndServe("0.0.0.0:8080", nil)
+	http.HandleFunc("/register", register_page)
+	http.ListenAndServe(":8080", nil)
 }
 
 func main() {
