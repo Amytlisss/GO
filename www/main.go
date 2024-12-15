@@ -55,7 +55,8 @@ type User struct {
 }
 
 func home_page(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("templates/home_page.html")
+	tmpl, err := template.ParseFiles("C:\\users\\home\\Documents\\GitHub\\GO\\www\\templates\\home_page.html")
+
 	if err != nil {
 		log.Printf("Ошибка при загрузке шаблона: %v", err)
 		http.Error(w, "Ошибка при загрузке шаблона: "+err.Error(), http.StatusInternalServerError)
@@ -76,7 +77,13 @@ func registerUser(u User) error {
 
 func register_page(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		tmpl, _ := template.ParseFiles("templates/register.html")
+		tmpl, err := template.ParseFiles("C:\\Users\\home\\Documents\\GitHub\\GO\\www\\templates\\register.html")
+		if err != nil {
+			log.Printf("Ошибка при загрузке шаблона: %v", err)
+			http.Error(w, "Ошибка при загрузке шаблона: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		tmpl.Execute(w, nil)
 	} else if r.Method == http.MethodPost {
 		r.ParseForm()
@@ -103,7 +110,7 @@ func register_page(w http.ResponseWriter, r *http.Request) {
 
 func login_page(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		tmpl, _ := template.ParseFiles("templates/login.html")
+		tmpl, _ := template.ParseFiles("C:\\Users\\home\\Documents\\GitHub\\GO\\www\\templates\\login.html")
 		tmpl.Execute(w, nil)
 	} else if r.Method == http.MethodPost {
 		r.ParseForm()
