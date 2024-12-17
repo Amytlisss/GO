@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="ru">
   <head>
+    <style>
+      .navbar-nav {
+        list-style-type: none; /* Убирает маркеры списка */
+        padding-left: 0; /* Убирает отступ слева */
+      }
+    </style>    
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,13 +26,14 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
+            {{if .IsLoggedIn}}
             <li class="nav-item">
-              <a class="nav-link" href="/login">Вход</a>
-          </li>       
-          <li class="nav-item">
-            <a class="nav-link" href="/logout">Выход</a>
-        </li>
-           
+              <a class="nav-link" href="/user_profile">Личный кабинет</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/logout">Выход</a>
+            </li>
+            {{end}}
             <li class="nav-item">
               <a class="nav-link active" aria-current="page" href="#about">О нас</a>
             </li>
@@ -40,13 +47,17 @@
               <a class="nav-link" href="#contact">Контакты</a>
             </li>
             <li class="nav-item">
-              <a class="btn btn-primary" href="/register">Регистрация</a>
-            </li> 
+              <a class="btn btn-primary me-3" href="/register">Регистрация</a>
+            </li>
+            <li class="nav-item">
+              <a class="btn btn-primary" href="/login">Вход</a>
+            </li>
           </ul>
         </div>
       </div>
     </nav>
-
+    
+    
     <div id="carouselExampleIndicators" class="carousel slide" data-bs-ride="carousel">
       <div class="carousel-indicators">
         <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
