@@ -129,51 +129,6 @@ func login_page(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func meetingsPage(w http.ResponseWriter, r *http.Request) {
-// 	session, _ := store.Get(r, "session-name")
-// 	user, ok := session.Values["user"].(User)
-// 	if !ok {
-// 		http.Redirect(w, r, "/login", http.StatusFound)
-// 		return
-// 	}
-
-// 	if r.Method == http.MethodPost {
-// 		dateStr := r.FormValue("date")
-// 		date, err := time.Parse("2006-01-02", dateStr)
-// 		if err != nil {
-// 			http.Error(w, "Неверный формат даты", http.StatusBadRequest)
-// 			return
-// 		}
-// 		if err := createMeeting(user.ID, date); err != nil { // Используем user.ID
-// 			http.Error(w, "Ошибка при создании встречи", http.StatusInternalServerError)
-// 			return
-// 		}
-// 	}
-
-// 	meetings, err := getMeetings(user.ID) // Используем user.ID
-// 	if err != nil {
-// 		http.Error(w, "Ошибка при получении встреч", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	tmpl, err := template.ParseFiles("templates/meetings.html")
-// 	if err != nil {
-// 		http.Error(w, "Ошибка при загрузке шаблона", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	err = tmpl.Execute(w, struct {
-// 		User     User
-// 		Meetings []Meeting
-// 	}{
-// 		User:     user,
-// 		Meetings: meetings,
-// 	})
-// 	if err != nil {
-// 		http.Error(w, "Ошибка при выполнении шаблона", http.StatusInternalServerError)
-// 	}
-// }
-
 func meetingsPage(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session-name")
 	user, ok := session.Values["user"].(User)
