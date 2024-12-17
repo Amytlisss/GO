@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование встречи</title>
+</head>
+<body>
+    <h1>Редактирование встречи</h1>
+    <form method="post" action="/meetings/edit?id={{.Meeting.ID}}">
+        <label for="date">Выберите новую дату встречи:</label>
+        <input type="date" id="date" name="date" value="{{.Meeting.Date.Format "2006-01-02"}}" required>
+        <label for="time">Выберите новое время встречи:</label>
+        <input type="time" id="time" name="time" value="{{.Meeting.Date.Format "15:04"}}" required>
+
+        <button type="submit">Сохранить изменения</button>
+    </form>
+
+    <a href="/meetings">Назад к встречам</a>
+    <a href="/logout">Выйти</a>
+</body>
+</html>

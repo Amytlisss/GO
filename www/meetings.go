@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -11,11 +14,19 @@ type Meeting struct {
 	UserID    int
 	Date      time.Time
 	Cancelled bool
-	CreatedAt time.Time // Время записи на встречу
+	CreatedAt time.Time
 }
 
 func createMeeting(userID int, date time.Time) error {
-	createdAt := time.Now() // Получаем текущее время
+	var exists bool
+	if err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("пользователь с ID %d не существует", userID)
+	}
+
+	createdAt := time.Now()
 	_, err := db.Exec("INSERT INTO meetings (user_id, date, created_at) VALUES ($1, $2, $3)", userID, date, createdAt)
 	return err
 }
@@ -43,16 +54,20 @@ func cancelMeeting(meetingID int) error {
 	return err
 }
 
-func cancelMeetingHandler(w http.ResponseWriter, r *http.Request) {
+func handleSession(w http.ResponseWriter, r *http.Request) (User, bool) {
 	session, _ := store.Get(r, "session-name")
-	_, ok := session.Values["user"].(User) // Игнорируем переменную user
+	user, ok := session.Values["user"].(User)
+	return user, ok
+}
+
+func cancelMeetingHandler(w http.ResponseWriter, r *http.Request) {
+	_, ok := handleSession(w, r)
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 
-	meetingIDStr := r.URL.Query().Get("id")
-	meetingID, err := strconv.Atoi(meetingIDStr) // Преобразование строки в int
+	meetingID, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
 		http.Error(w, "Неверный ID встречи", http.StatusBadRequest)
 		return
@@ -66,54 +81,158 @@ func cancelMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/meetings", http.StatusFound)
 }
 
-func updateMeetingTimeHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "session-name")
-	_, ok := session.Values["user"].(User)
+func updateMeeting(meetingID int, newDate time.Time) error {
+	_, err := db.Exec("UPDATE meetings SET date = $1 WHERE id = $2", newDate, meetingID)
+	return err
+}
+
+func editMeetingPageHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := handleSession(w, r)
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 
-	meetingIDStr := r.URL.Query().Get("id")
-	meetingID, err := strconv.Atoi(meetingIDStr) // Преобразование строки в int
+	meetingID, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
 		http.Error(w, "Неверный ID встречи", http.StatusBadRequest)
 		return
 	}
 
-	// Здесь вы можете получить новое время встречи из запроса
-	newTimeStr := r.URL.Query().Get("new_time")
-	newTime, err := time.Parse("2006-01-02 15:04", newTimeStr) // Пример формата времени
+	meetings, err := getMeetings(user.ID)
 	if err != nil {
-		http.Error(w, "Неверный формат времени", http.StatusBadRequest)
+		http.Error(w, "Ошибка при получении встреч", http.StatusInternalServerError)
 		return
 	}
 
-	// Логика для обновления времени встречи
-	if err := updateMeetingTime(meetingID, newTime); err != nil {
-		http.Error(w, "Ошибка при изменении времени встречи", http.StatusInternalServerError)
+	var meeting Meeting
+	for _, m := range meetings {
+		if m.ID == meetingID {
+			meeting = m
+			break
+		}
+	}
+
+	if meeting.ID == 0 {
+		http.Error(w, "Встреча не найдена", http.StatusNotFound)
 		return
 	}
 
-	http.Redirect(w, r, "/meetings", http.StatusFound)
+	tmpl, err := template.ParseFiles("templates/edit_meeting.html")
+	if err != nil {
+		http.Error(w, "Ошибка при загрузке шаблона: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, struct {
+		User    User
+		Meeting Meeting
+	}{
+		User:    user,
+		Meeting: meeting,
+	}); err != nil {
+		http.Error(w, "Ошибка при выполнении шаблона: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func editMeetingHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := handleSession(w, r)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	meetingID, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.Error(w, "Неверный ID встречи", http.StatusBadRequest)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		newDateStr := strings.TrimSpace(r.FormValue("date"))
+		newTimeStr := strings.TrimSpace(r.FormValue("time"))
+
+		if newDateStr == "" || newTimeStr == "" {
+			http.Error(w, "Дата и время не могут быть пустыми", http.StatusBadRequest)
+			return
+		}
+
+		newDateTime, err := time.Parse("2006-01-02 15:04", newDateStr+" "+newTimeStr)
+		if err != nil {
+			http.Error(w, "Неверный формат времени", http.StatusBadRequest)
+			return
+		}
+
+		if err := updateMeeting(meetingID, newDateTime); err != nil {
+			http.Error(w, "Ошибка при изменении времени встречи", http.StatusInternalServerError)
+			return
+		}
+
+		http.Redirect(w, r, "/meetings", http.StatusFound)
+		return
+	}
+
+	meetings, err := getMeetings(user.ID)
+	if err != nil {
+		http.Error(w, "Ошибка при получении встреч", http.StatusInternalServerError)
+		return
+	}
+
+	var meeting Meeting
+	for _, m := range meetings {
+		if m.ID == meetingID {
+			meeting = m
+			break
+		}
+	}
+
+	if meeting.ID == 0 {
+		http.Error(w, "Встреча не найдена", http.StatusNotFound)
+		return
+	}
+
+	// Отладочный вывод
+	fmt.Println("Данные встречи:", meeting)
+
+	data := struct {
+		User    User
+		Meeting Meeting
+	}{
+		User:    user,
+		Meeting: meeting,
+	}
+
+	tmpl, err := template.ParseFiles("templates/edit_meeting.html")
+	if err != nil {
+		http.Error(w, "Ошибка при загрузке шаблона: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Ошибка при выполнении шаблона: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func deleteMeeting(meetingID int) error {
+	_, err := db.Exec("DELETE FROM meetings WHERE id = $1", meetingID)
+	return err
 }
 
 func deleteMeetingHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "session-name")
-	_, ok := session.Values["user"].(User)
+	_, ok := handleSession(w, r)
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 
-	meetingIDStr := r.URL.Query().Get("id")
-	meetingID, err := strconv.Atoi(meetingIDStr) // Преобразование строки в int
+	meetingID, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
 		http.Error(w, "Неверный ID встречи", http.StatusBadRequest)
 		return
 	}
 
-	// Логика для удаления встречи
 	if err := deleteMeeting(meetingID); err != nil {
 		http.Error(w, "Ошибка при удалении встречи", http.StatusInternalServerError)
 		return

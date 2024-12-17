@@ -52,11 +52,17 @@ func home_page(w http.ResponseWriter, r *http.Request) {
 func registerUser(u User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
+		log.Printf("Ошибка при хешировании пароля: %v", err)
 		return err
 	}
 
 	_, err = db.Exec("INSERT INTO users (name, phone, email, password, role) VALUES ($1, $2, $3, $4, $5)", u.Name, u.Phone, u.Email, hashedPassword, u.Role)
-	return err
+	if err != nil {
+		log.Printf("Ошибка при добавлении пользователя в базу данных: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func register_page(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +73,6 @@ func register_page(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Ошибка при загрузке шаблона: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		tmpl.Execute(w, nil)
 	} else if r.Method == http.MethodPost {
 		r.ParseForm()
@@ -80,12 +85,18 @@ func register_page(w http.ResponseWriter, r *http.Request) {
 			Role:     "user",
 		}
 
+		// Проверка на пустые поля
+		if user.Name == "" || user.Phone == "" || user.Email == "" || user.Password == "" {
+			http.Error(w, "Все поля должны быть заполнены", http.StatusBadRequest)
+			return
+		}
+
 		if err := registerUser(user); err != nil {
 			if err.Error() == "pq: duplicate key value violates unique constraint \"users_phone_key\"" {
 				http.Error(w, "Пользователь с таким номером телефона уже зарегистрирован", http.StatusBadRequest)
 				return
 			}
-			http.Error(w, "Ошибка при сохранении данных", http.StatusInternalServerError)
+			http.Error(w, "Ошибка при сохранении данных: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -95,7 +106,7 @@ func register_page(w http.ResponseWriter, r *http.Request) {
 		session.Save(r, w)
 
 		// Перенаправление на личный кабинет
-		http.Redirect(w, r, "/user", http.StatusFound)
+		http.Redirect(w, r, "/user_profile", http.StatusFound)
 	}
 }
 
@@ -112,6 +123,12 @@ func login_page(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		phone := r.FormValue("phone")
 		password := r.FormValue("password")
+
+		// Проверка на пустые поля
+		if phone == "" || password == "" {
+			http.Error(w, "Номер телефона и пароль не могут быть пустыми", http.StatusBadRequest)
+			return
+		}
 
 		user, err := authenticateUser(phone, password)
 		if err != nil {
@@ -132,7 +149,7 @@ func login_page(w http.ResponseWriter, r *http.Request) {
 func meetingsPage(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session-name")
 	user, ok := session.Values["user"].(User)
-	if !ok {
+	if !ok || user.ID == 0 { // Проверка на существование пользователя
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
@@ -285,9 +302,11 @@ func userProfile(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		User     User
 		Meetings []Meeting
+		Now      time.Time
 	}{
 		User:     user,
 		Meetings: meetings,
+		Now:      time.Now(),
 	}
 
 	tmpl, err := template.ParseFiles("templates/user_profile.html")
