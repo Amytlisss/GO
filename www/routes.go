@@ -32,39 +32,3 @@ func handleRequest() {
 
 	http.ListenAndServe("0.0.0.0:8080", r) // Запускаем сервер с маршрутизатором
 }
-
-// package main
-
-// import (
-// 	"encoding/gob"
-// 	"net/http"
-
-// 	"github.com/gorilla/mux"
-// )
-
-// func init() {
-// 	// Регистрация типа User для использования в сессиях
-// 	gob.Register(User{})
-// }
-
-// func handleRequest() {
-// 	r := mux.NewRouter() // Создаем новый маршрутизатор
-
-// 	// Основные маршруты
-// 	r.HandleFunc("/", home_page).Methods("GET")
-// 	r.HandleFunc("/register", register_page).Methods("GET", "POST")
-// 	r.HandleFunc("/login", loginHandler).Methods("GET", "POST")
-// 	r.HandleFunc("/logout", logout).Methods("GET", "POST")
-
-// 	// Защищенные маршруты
-// 	protectedRoutes := r.PathPrefix("/").Subrouter()
-// 	protectedRoutes.Use(isAuthenticated) // Применяем middleware для всех защищенных маршрутов
-// 	protectedRoutes.HandleFunc("/protected", protectedPage).Methods("GET")
-// 	protectedRoutes.HandleFunc("/user_profile", userProfile).Methods("GET")
-// 	protectedRoutes.HandleFunc("/meetings", meetingsPage).Methods("GET", "POST")
-// 	protectedRoutes.HandleFunc("/cancel_meeting", cancelMeetingHandler).Methods("GET", "POST")
-// 	protectedRoutes.HandleFunc("/meetings/delete", deleteMeetingHandler).Methods("GET", "POST")
-// 	protectedRoutes.HandleFunc("/meetings/edit", editMeetingHandler).Methods("GET", "POST")
-
-// 	http.ListenAndServe("0.0.0.0:8080", r) // Запускаем сервер с маршрутизатором
-// }
