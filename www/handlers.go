@@ -141,8 +141,13 @@ func login_page(w http.ResponseWriter, r *http.Request) {
 		session.Values["user"] = user
 		session.Save(r, w)
 
-		// Перенаправление на личный кабинет
-		http.Redirect(w, r, "/user", http.StatusFound)
+		// Перенаправление на страницу администратора, если пользователь администратор
+		if user.Role == "admin" {
+			http.Redirect(w, r, "/admin_page", http.StatusFound)
+		} else {
+			// В противном случае перенаправляем на личный кабинет
+			http.Redirect(w, r, "/user_profile", http.StatusFound)
+		}
 	}
 }
 
@@ -256,8 +261,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Перенаправление на профиль пользователя
-		http.Redirect(w, r, "/user_profile", http.StatusFound)
+		// Перенаправление на страницу администратора, если пользователь администратор
+		if user.Role == "admin" {
+			http.Redirect(w, r, "/admin", http.StatusFound)
+		} else {
+			// В противном случае перенаправляем на профиль пользователя
+			http.Redirect(w, r, "/user_profile", http.StatusFound)
+		}
 		return
 	}
 
@@ -320,5 +330,96 @@ func userProfile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Ошибка при выполнении шаблона: %v", err)
 		http.Error(w, "Ошибка при выполнении шаблона: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func getAllMeetings() ([]Meeting, error) {
+	rows, err := db.Query("SELECT id, user_id, date, cancelled, created_at FROM meetings")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var meetings []Meeting
+	for rows.Next() {
+		var meeting Meeting
+		if err := rows.Scan(&meeting.ID, &meeting.UserID, &meeting.Date, &meeting.Cancelled, &meeting.CreatedAt); err != nil {
+			return nil, err
+		}
+		meetings = append(meetings, meeting)
+	}
+	return meetings, nil
+}
+
+func getMeetingsByDate(dateStr string) ([]Meeting, error) {
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return nil, fmt.Errorf("неверный формат даты: %v", err)
+	}
+
+	rows, err := db.Query("SELECT id, user_id, date, cancelled, created_at FROM meetings WHERE date::date = $1", date)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var meetings []Meeting
+	for rows.Next() {
+		var meeting Meeting
+		if err := rows.Scan(&meeting.ID, &meeting.UserID, &meeting.Date, &meeting.Cancelled, &meeting.CreatedAt); err != nil {
+			return nil, err
+		}
+		meetings = append(meetings, meeting)
+	}
+	return meetings, nil
+}
+
+func adminPageHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "session-name")
+	user, ok := session.Values["user"].(User)
+	if !ok || user.Role != "admin" { // Проверка, является ли пользователь администратором
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	// Получаем параметры фильтрации
+	dateFilter := r.URL.Query().Get("date")
+
+	var meetings []Meeting
+	var err error
+
+	if dateFilter != "" {
+		// Фильтрация по дате
+		meetings, err = getMeetingsByDate(dateFilter)
+		if err != nil {
+			http.Error(w, "Ошибка при получении встреч: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Получаем все встречи, если фильтр не установлен
+		meetings, err = getAllMeetings()
+		if err != nil {
+			http.Error(w, "Ошибка при получении встреч: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	tmpl, err := template.ParseFiles("templates/admin_page.html")
+	if err != nil {
+		http.Error(w, "Ошибка при загрузке шаблона: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, struct {
+		User       User
+		Meetings   []Meeting
+		DateFilter string
+	}{
+		User:       user,
+		Meetings:   meetings,
+		DateFilter: dateFilter,
+	}); err != nil {
+		http.Error(w, "Ошибка при выполнении шаблона: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 }

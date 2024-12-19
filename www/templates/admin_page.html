@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Встречи</title>
+</head>
+<body>
+    <h1>Администратор</h1>
+    <h2>Все Встречи</h2>
+
+    <form method="GET" action="/admin">
+        <label for="date">Фильтр по дате:</label>
+        <input type="date" id="date" name="date" value="{{.DateFilter}}">
+        <button type="submit">Фильтровать</button>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Пользователь ID</th>
+                <th>Дата</th>
+                <th>Отменена</th>
+                <th>Создана</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Meetings}}
+            <tr>
+                <td>{{.ID}}</td>
+                <td>{{.UserID}}</td>
+                <td>{{.Date}}</td>
+                <td>{{.Cancelled}}</td>
+                <td>{{.CreatedAt}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</body>
+</html>
