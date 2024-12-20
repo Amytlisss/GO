@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 
-	//"strconv"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -377,31 +376,24 @@ func getMeetingsByDate(dateStr string) ([]Meeting, error) {
 func adminPageHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session-name")
 	user, ok := session.Values["user"].(User)
-	if !ok || user.Role != "admin" { // Проверка, является ли пользователь администратором
+	if !ok || user.Role != "admin" {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 
-	// Получаем параметры фильтрации
 	dateFilter := r.URL.Query().Get("date")
 
 	var meetings []Meeting
 	var err error
 
 	if dateFilter != "" {
-		// Фильтрация по дате
 		meetings, err = getMeetingsByDate(dateFilter)
-		if err != nil {
-			http.Error(w, "Ошибка при получении встреч: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
 	} else {
-		// Получаем все встречи, если фильтр не установлен
 		meetings, err = getAllMeetings()
-		if err != nil {
-			http.Error(w, "Ошибка при получении встреч: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
+	}
+	if err != nil {
+		http.Error(w, "Ошибка при получении встреч: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	tmpl, err := template.ParseFiles("templates/admin_page.html")

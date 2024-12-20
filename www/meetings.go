@@ -26,8 +26,7 @@ func createMeeting(userID int, date time.Time) error {
 		return fmt.Errorf("пользователь с ID %d не существует", userID)
 	}
 
-	createdAt := time.Now()
-	_, err := db.Exec("INSERT INTO meetings (user_id, date, created_at) VALUES ($1, $2, $3)", userID, date, createdAt)
+	_, err := db.Exec("INSERT INTO meetings (user_id, date, created_at) VALUES ($1, $2, $3)", userID, date, time.Now())
 	return err
 }
 
@@ -86,6 +85,15 @@ func updateMeeting(meetingID int, newDate time.Time) error {
 	return err
 }
 
+func getMeetingByID(meetingID int) (Meeting, error) {
+	var meeting Meeting
+	err := db.QueryRow("SELECT id, user_id, date, cancelled FROM meetings WHERE id = $1 AND cancelled = FALSE", meetingID).Scan(&meeting.ID, &meeting.UserID, &meeting.Date, &meeting.Cancelled)
+	if err != nil {
+		return Meeting{}, err
+	}
+	return meeting, nil
+}
+
 func editMeetingPageHandler(w http.ResponseWriter, r *http.Request) {
 	user, ok := handleSession(w, r)
 	if !ok {
@@ -114,8 +122,11 @@ func editMeetingPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if meeting.ID == 0 {
-		http.Error(w, "Встреча не найдена", http.StatusNotFound)
-		return
+		meeting, err = getMeetingByID(meetingID)
+		if err != nil {
+			http.Error(w, "Ошибка при получении встречи", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	tmpl, err := template.ParseFiles("templates/edit_meeting.html")
@@ -127,10 +138,7 @@ func editMeetingPageHandler(w http.ResponseWriter, r *http.Request) {
 	if err := tmpl.Execute(w, struct {
 		User    User
 		Meeting Meeting
-	}{
-		User:    user,
-		Meeting: meeting,
-	}); err != nil {
+	}{User: user, Meeting: meeting}); err != nil {
 		http.Error(w, "Ошибка при выполнении шаблона: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -146,6 +154,19 @@ func editMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	meetingID, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
 		http.Error(w, "Неверный ID встречи", http.StatusBadRequest)
+		return
+	}
+
+	// Получаем встречу по ID
+	meeting, err := getMeetingByID(meetingID)
+	if err != nil {
+		http.Error(w, "Ошибка при получении встречи", http.StatusInternalServerError)
+		return
+	}
+
+	// Проверка прав доступа: пользователь должен быть создателем встречи или администратором
+	if meeting.UserID != user.ID && user.Role != "admin" {
+		http.Error(w, "У вас нет прав для редактирования этой встречи", http.StatusForbidden)
 		return
 	}
 
@@ -165,78 +186,32 @@ func editMeetingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := updateMeeting(meetingID, newDateTime); err != nil {
+			fmt.Println("Ошибка при обновлении встречи:", err) // Логирование ошибки
 			http.Error(w, "Ошибка при изменении времени встречи", http.StatusInternalServerError)
 			return
 		}
 
-		http.Redirect(w, r, "/meetings", http.StatusFound)
-		return
-	}
-
-	meetings, err := getMeetings(user.ID)
-	if err != nil {
-		http.Error(w, "Ошибка при получении встреч", http.StatusInternalServerError)
-		return
-	}
-
-	var meeting Meeting
-	for _, m := range meetings {
-		if m.ID == meetingID {
-			meeting = m
-			break
+		// Перенаправление в зависимости от роли пользователя
+		if user.Role == "admin" {
+			http.Redirect(w, r, "/admin_page", http.StatusFound) // Замените на реальный путь для администраторов
+		} else {
+			http.Redirect(w, r, "/meetings", http.StatusFound)
 		}
-	}
-
-	if meeting.ID == 0 {
-		http.Error(w, "Встреча не найдена", http.StatusNotFound)
 		return
 	}
 
-	// Отладочный вывод
-	fmt.Println("Данные встречи:", meeting)
-
-	data := struct {
-		User    User
-		Meeting Meeting
-	}{
-		User:    user,
-		Meeting: meeting,
-	}
-
+	// Здесь мы уже имеем переменную meeting, полученную ранее
 	tmpl, err := template.ParseFiles("templates/edit_meeting.html")
 	if err != nil {
 		http.Error(w, "Ошибка при загрузке шаблона: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if err := tmpl.Execute(w, data); err != nil {
+	if err := tmpl.Execute(w, struct {
+		User    User
+		Meeting Meeting
+	}{User: user, Meeting: meeting}); err != nil {
 		http.Error(w, "Ошибка при выполнении шаблона: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func deleteMeeting(meetingID int) error {
-	_, err := db.Exec("DELETE FROM meetings WHERE id = $1", meetingID)
-	return err
-}
-
-func deleteMeetingHandler(w http.ResponseWriter, r *http.Request) {
-	_, ok := handleSession(w, r)
-	if !ok {
-		http.Redirect(w, r, "/login", http.StatusFound)
-		return
-	}
-
-	meetingID, err := strconv.Atoi(r.URL.Query().Get("id"))
-	if err != nil {
-		http.Error(w, "Неверный ID встречи", http.StatusBadRequest)
-		return
-	}
-
-	if err := deleteMeeting(meetingID); err != nil {
-		http.Error(w, "Ошибка при удалении встречи", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/meetings", http.StatusFound)
 }

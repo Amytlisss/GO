@@ -1,36 +1,3 @@
-<!-- <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Личный кабинет</title>
-</head>
-<body>
-    <h1>Личный кабинет</h1>
-    <h2>Добро пожаловать, {{.User.Name}}!</h2>
-    <h3>Ваши встречи:</h3>
-    <ul>
-        {{range .Meetings}}
-            <li>
-                Встреча ID: {{.ID}}, Дата: {{.Date.Format "2006-01-02 15:04"}}, Отменена: {{.Cancelled}}
-                <a href="/cancel_meeting?id={{.ID}}">Отменить</a>
-            </li>
-        {{else}}
-            <li>У вас нет встреч.</li>
-        {{end}}
-    </ul>
-    <form method="post" action="/meetings">
-        <label for="date">Добавить встречу:</label>
-        <input type="date" name="date" required>
-        <label for="time">Выберите время:</label>
-        <input type="time" name="time" required>
-        <button type="submit">Добавить</button>
-    </form>
-    <a href="/logout">Выйти</a>
-</body>
-</html> -->
-
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>

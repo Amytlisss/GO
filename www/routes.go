@@ -23,13 +23,12 @@ func handleRequest() {
 
 	// Защищенные маршруты
 	r.Handle("/protected", isAuthenticated(http.HandlerFunc(protectedPage)))
-	r.Handle("/user_profile", isAuthenticated(http.HandlerFunc(userProfile))).Methods("GET")                     // Профиль пользователя
-	r.Handle("/meetings", isAuthenticated(http.HandlerFunc(meetingsPage))).Methods("GET", "POST")                // Страница встреч
-	r.Handle("/cancel_meeting", isAuthenticated(http.HandlerFunc(cancelMeetingHandler))).Methods("GET", "POST")  // Отмена встречи
-	r.Handle("/meetings/delete", isAuthenticated(http.HandlerFunc(deleteMeetingHandler))).Methods("GET", "POST") // Удаление встречи
-	r.Handle("/meetings/edit", isAuthenticated(http.HandlerFunc(editMeetingHandler))).Methods("GET", "POST")     // Редактирование встречи
-	r.Handle("/admin_page", isAuthenticated(http.HandlerFunc(adminPageHandler))).Methods("GET", "POST")          // Страница администратора
-	r.Handle("/admin", isAuthenticated(http.HandlerFunc(adminPageHandler))).Methods("GET", "POST")               // Страница администратора с фильтром по дате
+	r.Handle("/user_profile", isAuthenticated(http.HandlerFunc(userProfile))).Methods("GET")                    // Профиль пользователя
+	r.Handle("/meetings", isAuthenticated(http.HandlerFunc(meetingsPage))).Methods("GET", "POST")               // Страница встреч
+	r.Handle("/cancel_meeting", isAuthenticated(http.HandlerFunc(cancelMeetingHandler))).Methods("GET", "POST") // Отмена встречи
+	r.Handle("/meetings/edit", isAuthenticated(http.HandlerFunc(editMeetingHandler))).Methods("GET", "POST")    // Редактирование встречи
+	r.Handle("/admin_page", isAuthenticated(http.HandlerFunc(adminPageHandler))).Methods("GET", "POST")         // Страница администратора
+	r.Handle("/admin", isAuthenticated(http.HandlerFunc(adminPageHandler))).Methods("GET", "POST")              // Страница администратора с фильтром по дате
 
 	http.ListenAndServe("0.0.0.0:8080", r) // Запускаем сервер с маршрутизатором
 }
