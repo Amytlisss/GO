@@ -20,7 +20,6 @@
         {{range .Meetings}}
             <li>
                 Дата: {{.Date.Format "2006-01-02 15:04"}} 
-                Время записи: {{.CreatedAt.Format "2006-01-02 15:04"}} 
                 {{if .Cancelled}}(Отменена){{else if .Date.Before $.Now}}(Просрочена){{end}}
                 <a href="/cancel_meeting?id={{.ID}}">Отменить</a>
                 <a href="/meetings/edit?id={{.ID}}&new_time={{.Date.Format "2006-01-02 15:04"}}">Редактировать</a>

@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"database/sql"
 	"fmt"
 	"html/template"
 	"log"
@@ -252,7 +251,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Создание сессии
-		session, _ := store.Get(r, "session-name")
+		session, err := store.Get(r, "session-name")
+		if err != nil {
+			log.Printf("Ошибка получения сессии: %v", err)
+			http.Error(w, "Ошибка при получении сессии", http.StatusInternalServerError)
+			return
+		}
+
+		// Сохранение информации о пользователе в сессии
 		session.Values["user"] = user
 		if err := session.Save(r, w); err != nil {
 			log.Printf("Ошибка сохранения сессии: %v", err)
@@ -322,6 +328,11 @@ func userProfile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Ошибка при загрузке шаблона: %v", err)
 		http.Error(w, "Ошибка при загрузке шаблона: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if user.Role == "admin" {
+		http.Redirect(w, r, "/admin_page", http.StatusForbidden) // Перенаправление на страницу администратора
 		return
 	}
 
