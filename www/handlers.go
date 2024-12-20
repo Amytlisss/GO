@@ -37,9 +37,11 @@ func home_page(w http.ResponseWriter, r *http.Request) {
 	err = tmpl.Execute(w, struct {
 		User       User
 		IsLoggedIn bool
+		Role       string
 	}{
 		User:       user,
 		IsLoggedIn: ok,
+		Role:       user.Role,
 	})
 	if err != nil {
 		log.Printf("Ошибка при выполнении шаблона: %v", err)
@@ -202,10 +204,12 @@ func meetingsPage(w http.ResponseWriter, r *http.Request) {
 		User     User
 		Meetings []Meeting
 		Now      time.Time
+		Role     string
 	}{
 		User:     user,
 		Meetings: meetings,
 		Now:      time.Now(),
+		Role:     user.Role,
 	})
 	if err != nil {
 		log.Printf("Ошибка при выполнении шаблона: %v", err)
